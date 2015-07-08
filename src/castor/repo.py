@@ -6,8 +6,10 @@
 
 import json
 import jsonschema
+import git
 
-from os import path
+from os import path, listdir
+from io import StringIO
 
 
 CASTORFILE_SCHEMA = {
@@ -78,9 +80,41 @@ CASTORFILE_SCHEMA = {
     },
 }
 
+CASTORFILE_BASE = {
+    'lodge': [],
+}
 
-class Castor:
+
+class CastorException(Exception):
     pass
+
+
+class Castor(object):
+    def __init__(self, root):
+        fp = validate_repo(root)
+
+        if fp is None:
+            raise CastorException('"{}" is not a valid Castor root. Does it include a Castorfile'
+                                  'and is it a Git root? Is the Castorfile valid?'.format(root))
+
+        self.root = root
+        self.castorfile = json.load(fp)
+
+
+def validate_repo(root):
+    castorfile_path = path.join(root, 'Castorfile')
+    git_dir = path.join(root, '.git')
+
+    if path.exists(castorfile_path) \
+            and path.isfile(castorfile_path) \
+            and path.exists(git_dir) \
+            and path.isdir(git_dir):
+        with open(castorfile_path, 'r') as f:
+            s = StringIO(f.read())
+            s.seek(0)
+            if validate_castorfile(s):
+                s.seek(0)
+                return s
 
 
 def find_repo(from_path):
@@ -89,16 +123,9 @@ def find_repo(from_path):
 
     while next_candidate != candidate:
         candidate = next_candidate
-        castorfile_path = path.join(candidate, 'Castorfile')
-        git_dir = path.join(candidate, '.git')
 
-        if path.exists(castorfile_path) \
-                and path.isfile(castorfile_path) \
-                and path.exists(git_dir) \
-                and path.isdir(git_dir):
-            with open(castorfile_path, 'r') as f:
-                if validate_castorfile(f):
-                    return candidate
+        if validate_repo(candidate) is not None:
+            return candidate
 
         next_candidate = path.dirname(candidate)
 
@@ -110,3 +137,24 @@ def validate_castorfile(fp):
         return True
     except jsonschema.ValidationError:
         return False
+
+
+def init(root):
+    if not path.exists(root) or not path.isdir(root):
+        raise CastorException('"{}" does not exist or is not a directory'.format(root))
+
+    if len(listdir(root)):
+        raise CastorException('"{}" is not an empty directory')
+
+    # noinspection PyBroadException
+    try:
+        repo = git.Repo.init(root)
+    except:
+        raise CastorException('Git repo could not be initialized')
+
+    castorfile = path.join(root, 'Castorfile')
+    with open(castorfile, 'w') as f:
+        json.dump(CASTORFILE_BASE, f)
+
+    repo.index.add([castorfile])
+    repo.index.commit('Initial Castor Commit')
