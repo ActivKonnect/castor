@@ -1,0 +1,21 @@
+{
+  "lodge": [
+    {
+      "target": "/",
+      "type": "git",
+      "repo": "https://github.com/PrestaShop/PrestaShop.git",
+      "version": "1.6.1.0"
+    },
+    {
+      "target": "/.htaccess",
+      "type": "file",
+      "source": "files/htaccess"
+    },
+    {
+      "target": "/modules/ogone",
+      "type": "git",
+      "repo": "https://github.com/PrestaShop/ogone.git",
+      "version": "8696c40f24b1b04644ea58371f0610962e07532d"
+    }
+  ]
+}

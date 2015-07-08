@@ -4,5 +4,4 @@
 # (c) 2015 ActivKonnect
 # Rémy Sanchez <remy.sanchez@activkonnect.com>
 
-
-from .repo import Castor
+from .repo import *
