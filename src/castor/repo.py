@@ -112,9 +112,16 @@ def validate_repo(root):
         with open(castorfile_path, 'r') as f:
             s = StringIO(f.read())
             s.seek(0)
-            if validate_castorfile(s):
+            if not validate_castorfile(s):
+                return
+
+            # noinspection PyBroadException
+            try:
+                git.Repo(root)
                 s.seek(0)
                 return s
+            except:
+                return
 
 
 def find_repo(from_path):
