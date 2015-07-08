@@ -5,9 +5,47 @@
 # (c) 2015 ActivKonnect
 # Rémy Sanchez <remy.sanchez@activkonnect.com>
 
+import argparse
+import sys
+
+from castor.repo import CastorException, init
+
+
+def parse_cli():
+    p = argparse.ArgumentParser(description='Castor is a tool to manage assembly of various Git'
+                                            'repositories into a single deployable source tree.')
+    s = p.add_subparsers(help='Action', dest='action')
+
+    a_init = s.add_parser('init', help='Initializes a directory')
+    a_init.add_argument('directory', type=str, default='.', nargs='?', help='Directory to '
+                                                                            'initialize (defaults '
+                                                                            'to current directory)')
+
+    r = p.parse_args()
+
+    if r.action is None:
+        p.print_help()
+        sys.exit(1)
+
+    return r
+
+
+def do_init(directory):
+    init(directory)
+
 
 def main():
-    print('hello, world')
+    parsed = vars(parse_cli())
+    action = parsed.pop('action')
+
+    try:
+        globals()['do_{}'.format(action)](**parsed)
+    except KeyboardInterrupt:
+        print('kthx, bye')
+        sys.exit(1)
+    except CastorException as e:
+        sys.stderr.write('Error: {}\n'.format(e))
+        sys.exit(1)
 
 
 if __name__ == '__main__':

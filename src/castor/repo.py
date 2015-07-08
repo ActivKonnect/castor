@@ -8,7 +8,7 @@ import json
 import jsonschema
 import git
 
-from os import path, listdir
+from os import path, listdir, getcwd, mkdir
 from io import StringIO
 
 
@@ -147,8 +147,22 @@ def validate_castorfile(fp):
 
 
 def init(root):
-    if not path.exists(root) or not path.isdir(root):
+    root = path.normpath(path.join(getcwd(), root))
+    parent = path.normpath(path.join(root, '..'))
+
+    dir_invalid = not path.exists(root) or not path.isdir(root)
+    parent_invalid = not path.exists(parent) or not path.isdir(parent)
+
+    if dir_invalid and parent_invalid:
         raise CastorException('"{}" does not exist or is not a directory'.format(root))
+    elif parent_invalid:
+        raise CastorException('"{}"\'s parent directory does not exist or is invalid'.format(root))
+
+    if dir_invalid:
+        if not path.exists(root):
+            mkdir(root)
+        else:
+            raise CastorException('"{}" exists and is not a directory'.format(root))
 
     if len(listdir(root)):
         raise CastorException('"{}" is not an empty directory')

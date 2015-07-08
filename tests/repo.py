@@ -43,7 +43,7 @@ class TestRepoDiscovery(unittest.TestCase):
 class TestCastorInit(unittest.TestCase):
     def test_init_fail_does_not_exist(self):
         with self.assertRaises(CastorException):
-            init(path.join(ASSETS_ROOT, 'this-does-not-exist'))
+            init(path.join(ASSETS_ROOT, 'this-does-not-exist', 'nope'))
 
     def test_init_fail_is_file(self):
         with self.assertRaises(CastorException):
