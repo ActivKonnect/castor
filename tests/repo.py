@@ -147,6 +147,14 @@ class TestCastor(unittest.TestCase):
         self.assertFalse(repo.is_dirty())
         self.assertEqual(repo.untracked_files, [])
 
+    def test_apply_file(self):
+        file_path = path.join(self.test_root_holder, '.htaccess')
+        c = Castor(self.test_root)
+        c.apply_file('files/htaccess', file_path)
+
+        with open(file_path, 'r') as f:
+            self.assertEqual(f.read(), 'Require all granted\n')
+
     def test_apply(self):
         c = Castor(self.test_root)
         c.apply()

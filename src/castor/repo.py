@@ -5,6 +5,7 @@
 # Rémy Sanchez <remy.sanchez@activkonnect.com>
 
 import json
+from shutil import copyfile
 import jsonschema
 import git
 
@@ -106,6 +107,7 @@ class Castor(object):
                    for x in self.castorfile['lodge']}
 
         git_dirs = []
+        files = []
 
         for target_path in sorted(targets.keys()):
             target = targets[target_path]
@@ -113,8 +115,12 @@ class Castor(object):
             if target['type'] == 'git':
                 self.apply_git(target_path, target['repo'], target['version'])
                 git_dirs.append(target_path)
+            elif target['type'] == 'file':
+                self.apply_file(target['source'], target_path)
+                files.append(target_path)
 
         self.ignore_sub_repos(git_dirs)
+        self.ignore_files(files, git_dirs)
 
     @staticmethod
     def apply_git(target_path, repo, version):
@@ -146,12 +152,24 @@ class Castor(object):
         if not repo.head.is_detached:
             g.pull('origin')
 
+    def apply_file(self, source, target):
+        source_file = path.join(self.root, source)
+        copyfile(source_file, target)
+
     @staticmethod
     def ignore_sub_repos(paths):
         for repo in paths:
-            for sub in [x for x in paths if x.startswith(repo)]:
+            for sub in (x for x in paths if x.startswith(repo)):
                 ignore_path = '/' + path.relpath(sub, repo)
                 ensure_line_in_file(path.join(repo, '.git', 'info', 'exclude'), ignore_path)
+
+    @staticmethod
+    def ignore_files(files, repos):
+        for repo in repos:
+            ignore_file = path.join(repo, '.git', 'info', 'exclude')
+            for file in (x for x in files if x.startswith(repo)):
+                ignore_path = '/' + path.relpath(file, repo)
+                ensure_line_in_file(ignore_file, '{}'.format(ignore_path))
 
 
 def validate_repo(root):
