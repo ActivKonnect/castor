@@ -22,6 +22,7 @@ def parse_cli():
                                                                             'to current directory)')
 
     s.add_parser('apply', help='Apply the Castorfile')
+    s.add_parser('freeze', help='Report current Git commits to Castorfile')
 
     r = p.parse_args()
 
@@ -32,17 +33,25 @@ def parse_cli():
     return r
 
 
-def do_init(directory):
-    init(directory)
-
-
-def do_apply():
+def make_castor():
     root = find_repo('.')
 
     if root is None:
         raise CastorException('You are not in a Castor repository')
 
-    Castor(root).apply()
+    return Castor(root)
+
+
+def do_init(directory):
+    init(directory)
+
+
+def do_apply():
+    make_castor().apply()
+
+
+def do_freeze():
+    make_castor().freeze()
 
 
 def main():

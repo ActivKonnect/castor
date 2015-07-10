@@ -14,6 +14,7 @@ from os import path, listdir, getcwd, mkdir, makedirs
 from io import StringIO
 
 
+CASTORFILE_NAME = 'Castorfile'
 CASTORFILE_SCHEMA = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
     'type': 'object',
@@ -102,9 +103,23 @@ class Castor(object):
         self.root = path.realpath(root)
         self.castorfile = json.load(fp)
 
+    @property
+    def castorfile_path(self):
+        return path.join(self.root, CASTORFILE_NAME)
+
+    def write_castorfile(self):
+        try:
+            jsonschema.validate(self.castorfile, CASTORFILE_SCHEMA)
+            with open(self.castorfile_path, 'w') as f:
+                json.dump(self.castorfile, f, indent=4)
+        except jsonschema.ValidationError:
+            raise CastorException('Trying to write an invalid Castorfile!')
+
+    def target_path(self, target):
+        return path.join(self.root, 'lodge', target['target'][1:])
+
     def apply(self):
-        targets = {path.join(self.root, 'lodge', x['target'][1:]): x
-                   for x in self.castorfile['lodge']}
+        targets = {self.target_path(x): x for x in self.castorfile['lodge']}
 
         git_dirs = []
         files = []
@@ -145,7 +160,7 @@ class Castor(object):
                 g.checkout(version)
             except GitCommandError:
                 raise CastorException('Could not checkout version "{}" of "{}". Most likely because'
-                                      'it does not exist or because your repo is dirty.'
+                                      ' it does not exist or because your repo is dirty.'
                                       .format(version, repo))
 
         repo = git.Repo(target_path)
@@ -159,7 +174,7 @@ class Castor(object):
     @staticmethod
     def ignore_sub_repos(paths):
         for repo in paths:
-            for sub in (x for x in paths if x.startswith(repo)):
+            for sub in (x for x in paths if x.startswith(repo) and x != repo):
                 ignore_path = '/' + path.relpath(sub, repo)
                 ensure_line_in_file(path.join(repo, '.git', 'info', 'exclude'), ignore_path)
 
@@ -171,9 +186,38 @@ class Castor(object):
                 ignore_path = '/' + path.relpath(file, repo)
                 ensure_line_in_file(ignore_file, '{}'.format(ignore_path))
 
+    def freeze(self):
+        changed = False
+
+        for target in self.castorfile['lodge']:
+            if target['type'] == 'git':
+
+                repo = git.Repo(self.target_path(target))
+                commit = repo.head.commit.hexsha
+
+                if commit != target['version']:
+                    found = False
+                    tag = commit
+
+                    for ref in repo.refs:
+                        if ref.commit.hexsha == commit:
+                            if isinstance(ref, git.TagReference):
+                                tag = ref.name
+
+                            if ref.name == target['version']:
+                                found = True
+                                break
+
+                    if not found:
+                        target['version'] = tag
+                        changed = True
+
+        if changed:
+            self.write_castorfile()
+
 
 def validate_repo(root):
-    castorfile_path = path.join(root, 'Castorfile')
+    castorfile_path = path.join(root, CASTORFILE_NAME)
     git_dir = path.join(root, '.git')
 
     if path.exists(castorfile_path) \
@@ -244,9 +288,9 @@ def init(root):
     except:
         raise CastorException('Git repo could not be initialized')
 
-    castorfile = path.join(root, 'Castorfile')
+    castorfile = path.join(root, CASTORFILE_NAME)
     with open(castorfile, 'w') as f:
-        json.dump(CASTORFILE_BASE, f)
+        json.dump(CASTORFILE_BASE, f, indent=4)
 
     ignorefile = path.join(root, '.gitignore')
     with open(ignorefile, 'w') as f:

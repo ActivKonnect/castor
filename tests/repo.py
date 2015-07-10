@@ -4,6 +4,7 @@
 # (c) 2015 ActivKonnect
 # Rémy Sanchez <remy.sanchez@activkonnect.com>
 
+import json
 import unittest
 import git
 
@@ -163,3 +164,59 @@ class TestCastor(unittest.TestCase):
         self.assertEqual(str(repo.head.commit), 'cb83f96c803fb1067d7932a808b6f6eddf096ae5')
         self.assertFalse(repo.is_dirty())
         self.assertEqual(repo.untracked_files, [])
+
+    def test_write_castorfile(self):
+        c = Castor(self.test_root)
+        c.castorfile['lodge'][0]['version'] = 'foo'
+        c.write_castorfile()
+
+        with open(path.join(self.test_root, 'Castorfile'), 'r') as f:
+            cf = json.load(f)
+
+        self.assertEqual(cf['lodge'][0]['version'], 'foo')
+
+    def test_freeze(self):
+        c = Castor(self.test_root)
+        c.apply()
+
+        repo_dir = path.join(self.test_root, 'lodge')
+        g = git.Git(repo_dir)
+        g.checkout('master')
+
+        modified_file = path.join(self.test_root, 'lodge', 'test.txt')
+        with open(modified_file, 'w') as f:
+            f.write('Saluton')
+
+        r = git.Repo(repo_dir)
+        r.index.add([modified_file])
+        r.index.commit('Translated to Esperanto')
+        r.create_tag('tag2')
+
+        c.freeze()
+
+        self.assertEqual(c.castorfile['lodge'][0]['version'], 'tag2')
+        with open(path.join(self.test_root, 'Castorfile'), 'r') as f:
+            cf = json.load(f)
+            self.assertEqual(cf['lodge'][0]['version'], 'tag2')
+
+    def test_freeze_subdir(self):
+        c = Castor(self.test_root)
+        c.apply()
+        del c
+
+        with open(path.join(self.test_root, 'Castorfile'), 'r') as f:
+            d = json.load(f)
+
+        d['lodge'][2]['version'] = 'this-version-does-not-exist'
+
+        with open(path.join(self.test_root, 'Castorfile'), 'w') as f:
+            json.dump(d, f)
+
+        c = Castor(self.test_root)
+        c.freeze()
+
+        self.assertEqual(c.castorfile['lodge'][2]['version'], 'tag1')
+        with open(path.join(self.test_root, 'Castorfile'), 'r') as f:
+            cf = json.load(f)
+            self.assertEqual(cf['lodge'][2]['version'], 'tag1')
+
