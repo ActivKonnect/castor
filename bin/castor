@@ -8,7 +8,7 @@
 import argparse
 import sys
 
-from castor.repo import CastorException, init
+from castor.repo import CastorException, init, find_repo, Castor
 
 
 def parse_cli():
@@ -21,6 +21,8 @@ def parse_cli():
                                                                             'initialize (defaults '
                                                                             'to current directory)')
 
+    s.add_parser('apply', help='Apply the Castorfile')
+
     r = p.parse_args()
 
     if r.action is None:
@@ -32,6 +34,15 @@ def parse_cli():
 
 def do_init(directory):
     init(directory)
+
+
+def do_apply():
+    root = find_repo('.')
+
+    if root is None:
+        raise CastorException('You are not in a Castor repository')
+
+    Castor(root).apply()
 
 
 def main():

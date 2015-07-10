@@ -1,12 +1,8 @@
-Initial commit
+Yeah right
 # Please enter the commit message for your changes. Lines starting
 # with '#' will be ignored, and an empty message aborts the commit.
 # On branch master
-#
-# Initial commit
-#
 # Changes to be committed:
-#	new file:   Castorfile
-#	new file:   files/htaccess
-#	new file:   lodge/some/path/file.txt
+#	modified:   Castorfile
+#	deleted:    lodge/some/path/file.txt
 #
