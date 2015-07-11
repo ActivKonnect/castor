@@ -96,10 +96,18 @@ CASTORFILE_BASE = {
 
 
 class CastorException(Exception):
+    """
+    Emitted when something went wrong, holds the error message to be displayed to the user.
+    """
     pass
 
 
 class Castor(object):
+    """
+    Main Castor class. Most actions of the CLI map to this class. Does all the actions on an
+    existing Castor repo.
+    """
+
     def __init__(self, root):
         fp = validate_repo(root)
 
@@ -125,6 +133,9 @@ class Castor(object):
                 yield target
 
     def write_castorfile(self):
+        """
+        Validates then writes the current in-memory Castorfile to the disk.
+        """
         try:
             jsonschema.validate(self.castorfile, CASTORFILE_SCHEMA)
             with open(self.castorfile_path, 'w') as f:
@@ -132,16 +143,30 @@ class Castor(object):
         except jsonschema.ValidationError:
             raise CastorException('Trying to write an invalid Castorfile!')
 
-    def rel_path(self, to):
-        return path.join(self.root, to)
+    def abs_path(self, rel_path):
+        """
+        Returns an absolute path to the specified relative path
+        """
+
+        return path.join(self.root, rel_path)
 
     def target_lodge_path(self, target):
-        return self.rel_path(path.join(LODGE_DIR, target['target'][1:]))
+        """
+        Returns the absolute path of a target's lodge
+        """
+        return self.abs_path(path.join(LODGE_DIR, target['target'][1:]))
 
     def target_dam_path(self, target):
-        return self.rel_path(path.join(DAM_DIR, target['target'][1:]))
+        """
+        Returns the absolute path of a target's dam
+        """
+        return self.abs_path(path.join(DAM_DIR, target['target'][1:]))
 
     def apply(self):
+        """
+        For each existing target, checkout/copy the target at the right version.
+        """
+
         targets = {self.target_lodge_path(x): x for x in self.castorfile['lodge']}
 
         git_dirs = []
@@ -162,6 +187,13 @@ class Castor(object):
 
     @staticmethod
     def apply_git(target_path, repo, version):
+        """
+        Put a Git target to the right version.
+        :param target_path: path to checkout the Git repo
+        :param repo: URL to the Git repo
+        :param version: version (commit or tag) to put the repository at
+        :return:
+        """
         if not path.exists(target_path):
             makedirs(path.dirname(target_path), exist_ok=True)
             try:
@@ -191,11 +223,21 @@ class Castor(object):
             g.pull('origin')
 
     def apply_file(self, source, target):
+        """
+        Copies a file to its target
+        """
+
         source_file = path.join(self.root, source)
         copyfile(source_file, target)
 
     @staticmethod
     def ignore_sub_repos(paths):
+        """
+        Changes the git info/exclude file in order that all repos ignore each other without needing
+        to touch the .gitignore file.
+        :param paths: Paths of all the Git repos
+        """
+
         for repo in paths:
             for sub in (x for x in paths if x.startswith(repo) and x != repo):
                 ignore_path = '/' + path.relpath(sub, repo)
@@ -203,6 +245,11 @@ class Castor(object):
 
     @staticmethod
     def ignore_files(files, repos):
+        """
+        Ignore the given list of files from within the given list of repos. Same as ignore_sub_repos
+        but for files, basically.
+        """
+
         for repo in repos:
             ignore_file = path.join(repo, '.git', 'info', 'exclude')
             for file in (x for x in files if x.startswith(repo)):
@@ -210,6 +257,13 @@ class Castor(object):
                 ensure_line_in_file(ignore_file, '{}'.format(ignore_path))
 
     def update_versions(self):
+        """
+        Look at the current version of the targets, and update the in-memory Castorfile
+        accordingly.
+
+        This will return True if a change was detected.
+        """
+
         changed = False
 
         for target in self.git_targets:
@@ -236,6 +290,11 @@ class Castor(object):
         return changed
 
     def gather_dam(self):
+        """
+        Replaces the current dam (if it exists) with a copy if the lodge's current version (but NOT
+        the current state of lodge on the disk, instead it checks out the HEAD of all git repos).
+        """
+
         if path.exists(self.dam_path):
             rmtree(self.dam_path)
 
@@ -251,6 +310,13 @@ class Castor(object):
                     t.extractall(dam_target)
 
     def freeze(self):
+        """
+        The goal is to update current versions to the current Git HEADs, and gather all the files
+        in the dam directory.
+        If any change is detected, the Castorfile will be written on disk and the changes will be
+        added to the Git index.
+        """
+
         def path_in_dam(to_test):
             return path.join(self.root, to_test).startswith(path.join(self.dam_path, ''))
 
@@ -283,6 +349,10 @@ class Castor(object):
 
 
 def validate_repo(root):
+    """
+    Returns a read-only file-like object to the Castorfile if the repo is valid, or None otherwise.
+    """
+
     castorfile_path = path.join(root, CASTORFILE_NAME)
     git_dir = path.join(root, '.git')
 
@@ -306,6 +376,10 @@ def validate_repo(root):
 
 
 def find_repo(from_path):
+    """
+    Finds the nearest repo root in the hierarchy starting at and above from_path.
+    """
+
     next_candidate = path.realpath(from_path)
     candidate = None
 
@@ -319,6 +393,10 @@ def find_repo(from_path):
 
 
 def validate_castorfile(fp):
+    """
+    Returns True if the given file-like object points to a valid Castorfile, false otherwise.
+    """
+
     contents = json.load(fp)
     try:
         jsonschema.validate(contents, CASTORFILE_SCHEMA)
@@ -328,6 +406,10 @@ def validate_castorfile(fp):
 
 
 def init(root):
+    """
+    Creates an empty Castor project in the given repository.
+    """
+
     root = path.normpath(path.join(getcwd(), root))
     parent = path.normpath(path.join(root, '..'))
 
@@ -367,6 +449,11 @@ def init(root):
 
 
 def ensure_line_in_file(file_path, line):
+    """
+    Ensure that the line exists in the file at file_path. If the line has no line feed at the end,
+    one is automatically appended.
+    """
+
     l = ''
     c = 0
 
