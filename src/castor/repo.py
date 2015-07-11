@@ -5,7 +5,9 @@
 # Rémy Sanchez <remy.sanchez@activkonnect.com>
 
 import json
-from shutil import copyfile
+from tarfile import TarFile
+from tempfile import NamedTemporaryFile
+from shutil import copyfile, rmtree
 import jsonschema
 import git
 
@@ -13,6 +15,8 @@ from git.exc import GitCommandError
 from os import path, listdir, getcwd, mkdir, makedirs
 from io import StringIO
 
+LODGE_DIR = 'lodge'
+DAM_DIR = 'dam'
 
 CASTORFILE_NAME = 'Castorfile'
 CASTORFILE_SCHEMA = {
@@ -40,6 +44,12 @@ CASTORFILE_SCHEMA = {
             'type': 'string',
             'pattern': '^/',
         },
+        'git_repo': {
+            'type': 'string',
+            'pattern': '((\w+://)(.+@)*([\w\d\.]+)(:[\d]+){0,1}/*(.*)|'
+                       'file://(.*)|'
+                       '(.+@)*([\w\d\.]+):(.*))',
+        },
         'target_git': {
             'type': 'object',
             'properties': {
@@ -51,10 +61,7 @@ CASTORFILE_SCHEMA = {
                     'pattern': '^git$',
                 },
                 'repo': {
-                    'type': 'string',
-                    'pattern': '((\w+://)(.+@)*([\w\d\.]+)(:[\d]+){0,1}/*(.*)|'
-                               'file://(.*)|'
-                               '(.+@)*([\w\d\.]+):(.*))',
+                    '$ref': '#/definitions/git_repo'
                 },
                 'version': {
                     'type': 'string',
@@ -107,6 +114,16 @@ class Castor(object):
     def castorfile_path(self):
         return path.join(self.root, CASTORFILE_NAME)
 
+    @property
+    def dam_path(self):
+        return path.join(self.root, DAM_DIR)
+
+    @property
+    def git_targets(self):
+        for target in self.castorfile['lodge']:
+            if target['type'] == 'git':
+                yield target
+
     def write_castorfile(self):
         try:
             jsonschema.validate(self.castorfile, CASTORFILE_SCHEMA)
@@ -115,11 +132,17 @@ class Castor(object):
         except jsonschema.ValidationError:
             raise CastorException('Trying to write an invalid Castorfile!')
 
-    def target_path(self, target):
-        return path.join(self.root, 'lodge', target['target'][1:])
+    def rel_path(self, to):
+        return path.join(self.root, to)
+
+    def target_lodge_path(self, target):
+        return self.rel_path(path.join(LODGE_DIR, target['target'][1:]))
+
+    def target_dam_path(self, target):
+        return self.rel_path(path.join(DAM_DIR, target['target'][1:]))
 
     def apply(self):
-        targets = {self.target_path(x): x for x in self.castorfile['lodge']}
+        targets = {self.target_lodge_path(x): x for x in self.castorfile['lodge']}
 
         git_dirs = []
         files = []
@@ -186,34 +209,77 @@ class Castor(object):
                 ignore_path = '/' + path.relpath(file, repo)
                 ensure_line_in_file(ignore_file, '{}'.format(ignore_path))
 
-    def freeze(self):
+    def update_versions(self):
         changed = False
 
-        for target in self.castorfile['lodge']:
-            if target['type'] == 'git':
+        for target in self.git_targets:
+            repo = git.Repo(self.target_lodge_path(target))
+            commit = repo.head.commit.hexsha
 
-                repo = git.Repo(self.target_path(target))
-                commit = repo.head.commit.hexsha
+            if commit != target['version']:
+                found = False
+                tag = commit
 
-                if commit != target['version']:
-                    found = False
-                    tag = commit
+                for ref in repo.refs:
+                    if ref.commit.hexsha == commit:
+                        if isinstance(ref, git.TagReference):
+                            tag = ref.name
 
-                    for ref in repo.refs:
-                        if ref.commit.hexsha == commit:
-                            if isinstance(ref, git.TagReference):
-                                tag = ref.name
+                        if ref.name == target['version']:
+                            found = True
+                            break
 
-                            if ref.name == target['version']:
-                                found = True
-                                break
+                if not found:
+                    target['version'] = tag
+                    changed = True
 
-                    if not found:
-                        target['version'] = tag
-                        changed = True
+        return changed
 
-        if changed:
+    def gather_dam(self):
+        if path.exists(self.dam_path):
+            rmtree(self.dam_path)
+
+        for target in self.git_targets:
+            repo = git.Repo(self.target_lodge_path(target))
+            dam_target = self.target_dam_path(target)
+            makedirs(dam_target, exist_ok=True)
+
+            with NamedTemporaryFile('wb') as f:
+                repo.archive(f, format='tar')
+
+                with TarFile(f.name, 'r') as t:
+                    t.extractall(dam_target)
+
+    def freeze(self):
+        def path_in_dam(to_test):
+            return path.join(self.root, to_test).startswith(path.join(self.dam_path, ''))
+
+        changed = self.update_versions()
+
+        if changed or True:
+            self.gather_dam()
             self.write_castorfile()
+
+            repo = git.Repo(self.root)
+            staged = {CASTORFILE_NAME}
+
+            for diff in repo.index.diff(None):
+                is_interesting = ((diff.b_path is not None and path_in_dam(diff.b_path))
+                                  or (diff.a_path is not None and path_in_dam(diff.a_path)))
+
+                if is_interesting:
+                    if diff.a_path is not None:
+                        staged.add(diff.a_path)
+
+                    if diff.b_path is not None:
+                        staged.add(diff.b_path)
+
+            for file_name in repo.untracked_files:
+                if path_in_dam(file_name):
+                    staged.add(file_name)
+
+            for p in staged:
+                repo.git.add(p)
 
 
 def validate_repo(root):

@@ -22,7 +22,8 @@ def parse_cli():
                                                                             'to current directory)')
 
     s.add_parser('apply', help='Apply the Castorfile')
-    s.add_parser('freeze', help='Report current Git commits to Castorfile')
+    s.add_parser('freeze', help='Report current Git commits to Castorfile, assemble all files in '
+                                'the dam directory and add them to the Git index.')
 
     r = p.parse_args()
 

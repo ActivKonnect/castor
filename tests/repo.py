@@ -10,7 +10,7 @@ import git
 
 from shutil import rmtree, copytree
 from tempfile import mkdtemp, NamedTemporaryFile
-from os import path, rename
+from os import path, rename, walk
 from castor.repo import validate_castorfile, find_repo, Castor, CastorException, init, \
     ensure_line_in_file
 
@@ -111,8 +111,8 @@ class TestEnsureLineInFile(unittest.TestCase):
 class TestCastor(unittest.TestCase):
     def setUp(self):
         self.real_root = path.join(ASSETS_ROOT, 'test1')
-        self.test_root_holder = mkdtemp()
-        self.test_root = path.join(self.test_root_holder, 'repo')
+        self.workdir = mkdtemp()
+        self.test_root = path.join(self.workdir, 'repo')
         copytree(self.real_root, self.test_root)
 
         self.stock_git = path.join(self.test_root, 'git')
@@ -121,7 +121,7 @@ class TestCastor(unittest.TestCase):
         rename(self.stock_git, self.tmp_git)
 
     def tearDown(self):
-        rmtree(self.test_root_holder)
+        rmtree(self.workdir)
 
     def test_init(self):
         c = Castor(self.test_root)
@@ -135,7 +135,7 @@ class TestCastor(unittest.TestCase):
             Castor(__file__)
 
     def test_apply_git(self):
-        repo_path = path.join(self.test_root_holder, 'test')
+        repo_path = path.join(self.workdir, 'test')
         c = Castor(self.test_root)
         c.apply_git(
             repo_path,
@@ -149,7 +149,7 @@ class TestCastor(unittest.TestCase):
         self.assertEqual(repo.untracked_files, [])
 
     def test_apply_file(self):
-        file_path = path.join(self.test_root_holder, '.htaccess')
+        file_path = path.join(self.workdir, '.htaccess')
         c = Castor(self.test_root)
         c.apply_file('files/htaccess', file_path)
 
@@ -175,6 +175,62 @@ class TestCastor(unittest.TestCase):
 
         self.assertEqual(cf['lodge'][0]['version'], 'foo')
 
+    def test_update_versions(self):
+        c = Castor(self.test_root)
+        c.apply()
+
+        repo_dir = path.join(self.test_root, 'lodge')
+        g = git.Git(repo_dir)
+        g.checkout('master')
+
+        modified_file = path.join(self.test_root, 'lodge', 'test.txt')
+        with open(modified_file, 'w') as f:
+            f.write('Saluton')
+
+        r = git.Repo(repo_dir)
+        r.index.add([modified_file])
+        r.index.commit('Translated to Esperanto')
+        r.create_tag('tag2')
+
+        c.update_versions()
+
+        self.assertEqual(c.castorfile['lodge'][0]['version'], 'tag2')
+
+    def test_freeze_subdir(self):
+        c = Castor(self.test_root)
+        c.apply()
+        del c
+
+        with open(path.join(self.test_root, 'Castorfile'), 'r') as f:
+            d = json.load(f)
+
+        d['lodge'][2]['version'] = 'this-version-does-not-exist'
+
+        with open(path.join(self.test_root, 'Castorfile'), 'w') as f:
+            json.dump(d, f)
+
+        c = Castor(self.test_root)
+        c.update_versions()
+
+        self.assertEqual(c.castorfile['lodge'][2]['version'], 'tag1')
+
+    def test_gather_dam(self):
+        c = Castor(self.test_root)
+        c.apply()
+        c.gather_dam()
+
+        dam_files = set()
+        dam_path = path.join(self.test_root, 'dam')
+
+        for root, dir_names, file_names in walk(dam_path):
+            for file_name in file_names:
+                dam_files.add(path.relpath(path.join(root, file_name), dam_path))
+
+        self.assertEqual(dam_files, {
+            'test.txt',
+            'modules/test/youpi.txt',
+        })
+
     def test_freeze(self):
         c = Castor(self.test_root)
         c.apply()
@@ -194,29 +250,9 @@ class TestCastor(unittest.TestCase):
 
         c.freeze()
 
-        self.assertEqual(c.castorfile['lodge'][0]['version'], 'tag2')
         with open(path.join(self.test_root, 'Castorfile'), 'r') as f:
             cf = json.load(f)
             self.assertEqual(cf['lodge'][0]['version'], 'tag2')
 
-    def test_freeze_subdir(self):
-        c = Castor(self.test_root)
-        c.apply()
-        del c
-
-        with open(path.join(self.test_root, 'Castorfile'), 'r') as f:
-            d = json.load(f)
-
-        d['lodge'][2]['version'] = 'this-version-does-not-exist'
-
-        with open(path.join(self.test_root, 'Castorfile'), 'w') as f:
-            json.dump(d, f)
-
-        c = Castor(self.test_root)
-        c.freeze()
-
-        self.assertEqual(c.castorfile['lodge'][2]['version'], 'tag1')
-        with open(path.join(self.test_root, 'Castorfile'), 'r') as f:
-            cf = json.load(f)
-            self.assertEqual(cf['lodge'][2]['version'], 'tag1')
-
+        with open(path.join(self.test_root, 'dam', 'test.txt')) as f:
+            self.assertEqual('Saluton', f.read())
