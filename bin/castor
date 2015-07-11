@@ -12,7 +12,7 @@ from castor.repo import CastorException, init, find_repo, Castor
 
 
 def parse_cli():
-    p = argparse.ArgumentParser(description='Castor is a tool to manage assembly of various Git'
+    p = argparse.ArgumentParser(description='Castor is a tool to manage assembly of various Git '
                                             'repositories into a single deployable source tree.')
     s = p.add_subparsers(help='Action', dest='action')
 

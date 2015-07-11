@@ -123,6 +123,10 @@ class Castor(object):
         return path.join(self.root, CASTORFILE_NAME)
 
     @property
+    def lodge_path(self):
+        return path.join(self.root, LODGE_DIR)
+
+    @property
     def dam_path(self):
         return path.join(self.root, DAM_DIR)
 
@@ -131,6 +135,20 @@ class Castor(object):
         for target in self.castorfile['lodge']:
             if target['type'] == 'git':
                 yield target
+
+    @property
+    def git_targets_with_submodules(self):
+        to_explore = list(self.git_targets)
+
+        for target in to_explore:
+            yield target
+
+            for submodule in git.Repo(self.target_lodge_path(target)).submodules:
+                new_target = {
+                    'target': '/' + path.relpath(submodule.abspath, self.lodge_path),
+                }
+                yield new_target
+                to_explore.append(new_target)
 
     def write_castorfile(self):
         """
@@ -198,6 +216,10 @@ class Castor(object):
             makedirs(path.dirname(target_path), exist_ok=True)
             try:
                 git.Git().clone(repo, target_path)
+                repo = git.Repo(target_path)
+
+                for submodule in repo.submodules:
+                    submodule.update(recursive=True, init=True)
             except GitCommandError:
                 raise CastorException('Unable to clone "{}"'.format(repo))
         elif not path.exists(path.join(target_path, '.git')):
@@ -298,7 +320,7 @@ class Castor(object):
         if path.exists(self.dam_path):
             rmtree(self.dam_path)
 
-        for target in self.git_targets:
+        for target in self.git_targets_with_submodules:
             repo = git.Repo(self.target_lodge_path(target))
             dam_target = self.target_dam_path(target)
             makedirs(dam_target, exist_ok=True)
@@ -307,7 +329,8 @@ class Castor(object):
                 repo.archive(f, format='tar')
 
                 with TarFile(f.name, 'r') as t:
-                    t.extractall(dam_target)
+                    t.extractall(dam_target, members=(x for x in t.getmembers()
+                                                      if path.basename(x.name) != '.gitignore'))
 
     def freeze(self):
         """
