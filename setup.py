@@ -6,19 +6,19 @@
 import os
 import codecs
 from distutils.core import setup
+from pip.req import parse_requirements
 
 
 with codecs.open(os.path.join(os.path.dirname(__file__), 'README.rst'), 'r') as readme:
     README = readme.read()
 
-with codecs.open(os.path.join(os.path.dirname(__file__), 'requirements.txt'), 'r') as reqs:
-    requirements = [x.strip().replace(' ', '(') + ')' for x in reqs.readlines()]
+requirements = parse_requirements(os.path.join(os.path.dirname(__file__), 'requirements.txt'))
 
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='castor',
-    version='0.1.2',
+    version='0.1.3',
     scripts=['bin/castor'],
     packages=['castor'],
     package_dir={'': 'src'},
@@ -29,7 +29,7 @@ setup(
     url='https://github.com/ActivKonnect/castor',
     author='Rémy Sanchez',
     author_email='remy.sanchez@activkonnect.com',
-    requires=requirements,
+    install_requires=requirements,
     classifiers=[
         'Intended Audience :: Developers',
         'License :: Other/Proprietary License',
