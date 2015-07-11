@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+# vim: fileencoding=utf-8 tw=100 expandtab ts=4 sw=4 :
+#
+# Castor
+# (c) 2015 ActivKonnect
+# Rémy Sanchez <remy.sanchez@activkonnect.com>
+
+import argparse
+import sys
+
+from castor.repo import CastorException, init, find_repo, Castor
+
+
+def parse_cli():
+    p = argparse.ArgumentParser(description='Castor is a tool to manage assembly of various Git '
+                                            'repositories into a single deployable source tree.')
+    s = p.add_subparsers(help='Action', dest='action')
+
+    a_init = s.add_parser('init', help='Initializes a directory')
+    a_init.add_argument('directory', type=str, default='.', nargs='?', help='Directory to '
+                                                                            'initialize (defaults '
+                                                                            'to current directory)')
+
+    s.add_parser('apply', help='Apply the Castorfile')
+    s.add_parser('freeze', help='Report current Git commits to Castorfile, assemble all files in '
+                                'the dam directory and add them to the Git index.')
+
+    r = p.parse_args()
+
+    if r.action is None:
+        p.print_help()
+        sys.exit(1)
+
+    return r
+
+
+def make_castor():
+    root = find_repo('.')
+
+    if root is None:
+        raise CastorException('You are not in a Castor repository')
+
+    return Castor(root)
+
+
+def do_init(directory):
+    init(directory)
+
+
+def do_apply():
+    make_castor().apply()
+
+
+def do_freeze():
+    make_castor().freeze()
+
+
+def main():
+    parsed = vars(parse_cli())
+    action = parsed.pop('action')
+
+    try:
+        globals()['do_{}'.format(action)](**parsed)
+    except KeyboardInterrupt:
+        print('kthx, bye')
+        sys.exit(1)
+    except CastorException as e:
+        sys.stderr.write('Error: {}\n'.format(e))
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

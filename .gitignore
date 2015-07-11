@@ -1,0 +1,7 @@
+*.swp
+*.un~
+.idea
+__pycache__
+/MANIFEST
+/dist
+/build

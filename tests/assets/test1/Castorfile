@@ -1,0 +1,21 @@
+{
+  "lodge": [
+    {
+      "target": "/",
+      "type": "git",
+      "repo": "https://bitbucket.org/activkonnect/castor-test-1.git",
+      "version": "tag1"
+    },
+    {
+      "target": "/.htaccess",
+      "type": "file",
+      "source": "files/htaccess"
+    },
+    {
+      "target": "/modules/test",
+      "type": "git",
+      "repo": "https://bitbucket.org/activkonnect/castor-test-2.git",
+      "version": "tag1"
+    }
+  ]
+}
