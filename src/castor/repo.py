@@ -141,14 +141,21 @@ class Castor(object):
         to_explore = list(self.git_targets)
 
         for target in to_explore:
-            yield target
-
             for submodule in git.Repo(self.target_lodge_path(target)).submodules:
                 new_target = {
+                    'type': 'git',
                     'target': '/' + path.relpath(submodule.abspath, self.lodge_path),
                 }
-                yield new_target
                 to_explore.append(new_target)
+
+        yield from self.sorted_targets(to_explore)
+
+    @staticmethod
+    def sorted_targets(targets):
+        targets = list(targets)
+        for target_i, target_path in sorted(((i, x['target']) for i, x in enumerate(targets)),
+                                            key=lambda x: x[1]):
+            yield targets[target_i]
 
     def write_castorfile(self):
         """
@@ -331,6 +338,10 @@ class Castor(object):
                 with TarFile(f.name, 'r') as t:
                     t.extractall(dam_target, members=(x for x in t.getmembers()
                                                       if path.basename(x.name) != '.gitignore'))
+
+        for target in self.sorted_targets(self.castorfile['lodge']):
+            if target['type'] == 'file':
+                self.apply_file(target['source'], self.target_dam_path(target))
 
     def freeze(self):
         """
