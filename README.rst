@@ -20,7 +20,7 @@ Then, you need to edit your ``Castorfile``. It might look like
 Note
 ++++
 
-``post_freeze`` array are an optional argument. It must be an array, each command will be executed
+``post_freeze`` array is optional. It must be an array, each command will be executed
 on the ``target`` directory after executing ``castor freeze``.
 
 .. code-block::
