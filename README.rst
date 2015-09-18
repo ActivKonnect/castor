@@ -17,6 +17,12 @@ repository containing an empty ``Castorfile`` and a pre-initialized .gitignore.
 
 Then, you need to edit your ``Castorfile``. It might look like
 
+Note
+++++
+
+``post_freeze`` array are an optional argument. It must be an array, each command will be executed
+on the ``target`` directory after executing ``castor freeze``.
+
 .. code-block::
 
    {
@@ -31,7 +37,10 @@ Then, you need to edit your ``Castorfile``. It might look like
                "target": "/themes/my-prestashop-theme",
                "version": "e0e7c15789e6ff674cd75cb24981155441c3df09",
                "repo": "git@bitbucket.org:activkonnect/my-prestashop-theme.git",
-               "type": "git"
+               "type": "git",
+               "post_freeze": [
+                   "composer update --no-dev"
+               ]
            },
            {
                "target": "/.htaccess",
@@ -61,3 +70,5 @@ You can use the ``lodge`` as your working directory during development. If you m
 code, you can commit in the git repos. If you simply want to update upstream code, check out the new
 tag/commit you want to use. Then  you can use ``castor freeze`` again, and it will update the
 ``Castorfile`` automatically with the latest Git HEADs, as well as the ``dam`` directory.
+
+
