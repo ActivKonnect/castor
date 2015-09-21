@@ -5,6 +5,8 @@
 # Rémy Sanchez <remy.sanchez@activkonnect.com>
 
 import json
+import shlex
+import subprocess
 from tarfile import TarFile
 from tempfile import NamedTemporaryFile
 from shutil import copyfile, rmtree
@@ -65,6 +67,12 @@ CASTORFILE_SCHEMA = {
                 },
                 'version': {
                     'type': 'string',
+                },
+                'post_freeze': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'string',
+                    }
                 },
             },
             'required': ['target', 'type', 'repo', 'version'],
@@ -342,6 +350,15 @@ class Castor(object):
         for target in self.sorted_targets(self.castorfile['lodge']):
             if target['type'] == 'file':
                 self.apply_file(target['source'], self.target_dam_path(target))
+
+        for target in self.git_targets:
+            if 'post_freeze' in target:
+                dam_target = self.target_dam_path(target)
+                print('Executing post freeze for target {}'.format(target['target']))
+
+                for cl in target['post_freeze']:
+                    print(cl)
+                    subprocess.Popen(shlex.split(cl), cwd=dam_target).wait()
 
     def freeze(self):
         """

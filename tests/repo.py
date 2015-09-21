@@ -229,6 +229,7 @@ class TestCastor(unittest.TestCase):
         self.assertEqual(dam_files, {
             'test.txt',
             'modules/test/youpi.txt',
+            'modules/test/foo',
             '.htaccess',
         })
 
@@ -257,6 +258,14 @@ class TestCastor(unittest.TestCase):
 
         with open(path.join(self.test_root, 'dam', 'test.txt')) as f:
             self.assertEqual('Saluton', f.read())
+
+    def test_post_freeze(self):
+        c = Castor(self.test_root)
+        c.apply()
+
+        c.freeze()
+
+        self.assertTrue(path.exists(path.join(self.test_root, 'dam', 'modules', 'test', 'foo')))
 
     def test_freeze_files(self):
         c = Castor(self.test_root)
