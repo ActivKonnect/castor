@@ -22,7 +22,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='castor',
-    version='0.1.5',
+    version='0.2.0',
     scripts=['bin/castor'],
     packages=['castor'],
     package_dir={'': 'src'},
