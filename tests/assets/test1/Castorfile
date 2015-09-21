@@ -15,7 +15,10 @@
       "target": "/modules/test",
       "type": "git",
       "repo": "https://bitbucket.org/activkonnect/castor-test-2.git",
-      "version": "tag1"
+      "version": "tag1",
+      "post_freeze": [
+        "touch foo"
+      ]
     }
   ]
 }
