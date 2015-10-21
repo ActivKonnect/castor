@@ -265,6 +265,10 @@ class Castor(object):
         """
 
         source_file = path.join(self.root, source)
+
+        if not path.exists(path.dirname(target)):
+            makedirs(path.dirname(target), exist_ok=True)
+
         copyfile(source_file, target)
 
     @staticmethod
