@@ -385,8 +385,8 @@ class Castor(object):
             staged = {CASTORFILE_NAME}
 
             for diff in repo.index.diff(None):
-                is_interesting = ((diff.b_path is not None and path_in_dam(diff.b_path))
-                                  or (diff.a_path is not None and path_in_dam(diff.a_path)))
+                is_interesting = ((diff.b_path is not None and path_in_dam(diff.b_path)) or
+                                  (diff.a_path is not None and path_in_dam(diff.a_path)))
 
                 if is_interesting:
                     if diff.a_path is not None:

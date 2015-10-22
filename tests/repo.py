@@ -273,4 +273,8 @@ class TestCastor(unittest.TestCase):
         c.apply()
         c.freeze()
         self.assertTrue(path.exists(path.join(self.test_root, 'dam', '.htaccess')))
-        self.assertTrue(path.exists(path.join(self.test_root, 'dam', 'app/documentation/readme.md')))
+        self.assertTrue(path.exists(path.join(
+            self.test_root,
+            'dam',
+            'app/documentation/readme.md'
+        )))
