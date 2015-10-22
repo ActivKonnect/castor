@@ -231,6 +231,7 @@ class TestCastor(unittest.TestCase):
             'modules/test/youpi.txt',
             'modules/test/foo',
             '.htaccess',
+            'app/documentation/readme.md',
         })
 
     def test_freeze(self):
@@ -272,3 +273,8 @@ class TestCastor(unittest.TestCase):
         c.apply()
         c.freeze()
         self.assertTrue(path.exists(path.join(self.test_root, 'dam', '.htaccess')))
+        self.assertTrue(path.exists(path.join(
+            self.test_root,
+            'dam',
+            'app/documentation/readme.md'
+        )))

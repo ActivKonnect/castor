@@ -265,6 +265,10 @@ class Castor(object):
         """
 
         source_file = path.join(self.root, source)
+
+        if not path.exists(path.dirname(target)):
+            makedirs(path.dirname(target), exist_ok=True)
+
         copyfile(source_file, target)
 
     @staticmethod
@@ -381,8 +385,8 @@ class Castor(object):
             staged = {CASTORFILE_NAME}
 
             for diff in repo.index.diff(None):
-                is_interesting = ((diff.b_path is not None and path_in_dam(diff.b_path))
-                                  or (diff.a_path is not None and path_in_dam(diff.a_path)))
+                is_interesting = ((diff.b_path is not None and path_in_dam(diff.b_path)) or
+                                  (diff.a_path is not None and path_in_dam(diff.a_path)))
 
                 if is_interesting:
                     if diff.a_path is not None:

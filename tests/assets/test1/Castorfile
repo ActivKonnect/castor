@@ -19,6 +19,11 @@
       "post_freeze": [
         "touch foo"
       ]
+    },
+    {
+      "target": "/app/documentation/readme.md",
+      "type": "file",
+      "source": "files/readme"
     }
   ]
 }
