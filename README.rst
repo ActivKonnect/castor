@@ -69,6 +69,13 @@ argument like so :
 Now you can freeze your project into a git-free, commitable and deployable tree of source code.
 This will go into the ``dam`` directory.
 
+If you want to execute post freeze commands on apply add the ``--exec-post-freeze``
+argument like so :
+
+.. code-block::
+
+    castor apply --exec-post-freeze
+
 .. code-block::
 
    castor freeze
