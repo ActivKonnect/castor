@@ -164,6 +164,17 @@ class TestCastor(unittest.TestCase):
         self.assertEqual(str(repo.head.commit), 'cb83f96c803fb1067d7932a808b6f6eddf096ae5')
         self.assertFalse(repo.is_dirty())
         self.assertEqual(repo.untracked_files, [])
+        self.assertFalse(path.exists(path.join(self.test_root, 'lodge', 'modules', 'test', 'foo')))
+
+    def test_apply_exec_post_freeze(self):
+        c = Castor(self.test_root)
+        c.apply(True)
+
+        repo = git.Repo(path.join(self.test_root, 'lodge'))
+        self.assertEqual(str(repo.head.commit), 'cb83f96c803fb1067d7932a808b6f6eddf096ae5')
+        self.assertFalse(repo.is_dirty())
+        self.assertEqual(repo.untracked_files, [])
+        self.assertTrue(path.exists(path.join(self.test_root, 'lodge', 'modules', 'test', 'foo')))
 
     def test_write_castorfile(self):
         c = Castor(self.test_root)
