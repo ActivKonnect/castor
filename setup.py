@@ -22,7 +22,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='castor',
-    version='0.2.2',
+    version='0.2.3',
     scripts=['bin/castor'],
     packages=['castor'],
     package_dir={'': 'src'},
@@ -38,6 +38,7 @@ setup(
         'Intended Audience :: Developers',
         'License :: Other/Proprietary License',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
