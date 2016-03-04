@@ -21,7 +21,14 @@ def parse_cli():
                                                                             'initialize (defaults '
                                                                             'to current directory)')
 
-    s.add_parser('apply', help='Apply the Castorfile')
+    a_apply = s.add_parser('apply', help='Apply the Castorfile')
+    a_apply.add_argument(
+        '--exec-post-freeze',
+        action='store_true',
+        default=False,
+        help='Execute post freeze on apply'
+    )
+
     s.add_parser('freeze', help='Report current Git commits to Castorfile, assemble all files in '
                                 'the dam directory and add them to the Git index.')
 
@@ -47,8 +54,8 @@ def do_init(directory):
     init(directory)
 
 
-def do_apply():
-    make_castor().apply()
+def do_apply(exec_post_freeze):
+    make_castor().apply(exec_post_freeze)
 
 
 def do_freeze():

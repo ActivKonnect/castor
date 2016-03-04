@@ -195,7 +195,20 @@ class Castor(object):
         """
         return self.abs_path(path.join(DAM_DIR, target['target'][1:]))
 
-    def apply(self):
+    def exec_post_freeze(self, target, is_apply=False):
+
+        if is_apply:
+            dir_target = self.target_lodge_path(target)
+        else:
+            dir_target = self.target_dam_path(target)
+
+        print('Executing post freeze for target {}'.format(target['target']))
+
+        for cl in target['post_freeze']:
+            print(cl)
+            subprocess.Popen(shlex.split(cl), cwd=dir_target).wait()
+
+    def apply(self, exec_post_freeze=False):
         """
         For each existing target, checkout/copy the target at the right version.
         """
@@ -211,6 +224,10 @@ class Castor(object):
             if target['type'] == 'git':
                 self.apply_git(target_path, target['repo'], target['version'])
                 git_dirs.append(target_path)
+
+                if 'post_freeze' in target and exec_post_freeze:
+                    self.exec_post_freeze(target, is_apply=True)
+
             elif target['type'] == 'file':
                 self.apply_file(target['source'], target_path)
                 files.append(target_path)
@@ -357,12 +374,7 @@ class Castor(object):
 
         for target in self.git_targets:
             if 'post_freeze' in target:
-                dam_target = self.target_dam_path(target)
-                print('Executing post freeze for target {}'.format(target['target']))
-
-                for cl in target['post_freeze']:
-                    print(cl)
-                    subprocess.Popen(shlex.split(cl), cwd=dam_target).wait()
+                self.exec_post_freeze(target)
 
     def freeze(self):
         """
